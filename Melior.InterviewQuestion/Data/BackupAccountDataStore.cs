@@ -2,11 +2,11 @@
 
 namespace Melior.InterviewQuestion.Data
 {
-    public class BackupAccountDataStore
+    public class BackupAccountDataStore : IAccountDataStore
     {
         public Account GetAccount(string accountNumber)
         {
-            // Access backup data base to retrieve account, code removed for brevity 
+            // Access backup data base to retrieve account, code removed for brevity
             return new Account();
         }
 

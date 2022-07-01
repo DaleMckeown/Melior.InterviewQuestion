@@ -1,90 +1,44 @@
 ﻿using Melior.InterviewQuestion.Data;
 using Melior.InterviewQuestion.Types;
+using Melior.InterviewQuestion.Validators;
 using System.Configuration;
 
 namespace Melior.InterviewQuestion.Services
 {
     public class PaymentService : IPaymentService
     {
-        public MakePaymentResult MakePayment(MakePaymentRequest request)
+        private readonly IAccountDataStore _accountDataStore;
+        private readonly PaymentValidator _paymentValidator;
+
+        public PaymentService()
         {
-            var dataStoreType = ConfigurationManager.AppSettings["DataStoreType"];
-
-            Account account = null;
-
-            if (dataStoreType == "Backup")
+            if (ConfigurationManager.AppSettings["DataStoreType"] == "Backup")
             {
-                var accountDataStore = new BackupAccountDataStore();
-                account = accountDataStore.GetAccount(request.DebtorAccountNumber);
+                _accountDataStore = new BackupAccountDataStore();
             }
             else
             {
-                var accountDataStore = new AccountDataStore();
-                account = accountDataStore.GetAccount(request.DebtorAccountNumber);
+                _accountDataStore = new AccountDataStore();
             }
+        }
 
-            var result = new MakePaymentResult();
+        public PaymentService(IAccountDataStore accountDataStore, PaymentValidator paymentValidator)
+        {
+            _accountDataStore = accountDataStore;
+            _paymentValidator = paymentValidator;
+        }
 
-            switch (request.PaymentScheme)
-            {
-                case PaymentScheme.Bacs:
-                    if (account == null)
-                    {
-                        result.Success = false;
-                    }
-                    else if (!account.AllowedPaymentSchemes.HasFlag(AllowedPaymentSchemes.Bacs))
-                    {
-                        result.Success = false;
-                    }
-                    break;
+        public MakePaymentResult MakePayment(MakePaymentRequest request)
+        {
+            Account account = _accountDataStore.GetAccount(request.DebtorAccountNumber);
 
-                case PaymentScheme.FasterPayments:
-                    if (account == null)
-                    {
-                        result.Success = false;
-                    }
-                    else if (!account.AllowedPaymentSchemes.HasFlag(AllowedPaymentSchemes.FasterPayments))
-                    {
-                        result.Success = false;
-                    }
-                    else if (account.Balance < request.Amount)
-                    {
-                        result.Success = false;
-                    }
-                    break;
-
-                case PaymentScheme.Chaps:
-                    if (account == null)
-                    {
-                        result.Success = false;
-                    }
-                    else if (!account.AllowedPaymentSchemes.HasFlag(AllowedPaymentSchemes.Chaps))
-                    {
-                        result.Success = false;
-                    }
-                    else if (account.Status != AccountStatus.Live)
-                    {
-                        result.Success = false;
-                    }
-                    break;
-            }
+            var result = _paymentValidator.ValidPayment(account, request);
 
             if (result.Success)
             {
                 account.Balance -= request.Amount;
-
-                if (dataStoreType == "Backup")
-                {
-                    var accountDataStore = new BackupAccountDataStore();
-                    accountDataStore.UpdateAccount(account);
-                }
-                else
-                {
-                    var accountDataStore = new AccountDataStore();
-                    accountDataStore.UpdateAccount(account);
-                }
+                _accountDataStore.UpdateAccount(account);
             }
-
             return result;
         }
     }
