@@ -20,6 +20,11 @@ namespace Melior.InterviewQuestion.Services
             }
         }
 
+        public PaymentService(IAccountDataStore accountDataStore)
+        {
+            _accountDataStore = accountDataStore;
+        }
+
         public MakePaymentResult MakePayment(MakePaymentRequest request)
         {
             Account account = _accountDataStore.GetAccount(request.DebtorAccountNumber);
