@@ -3,7 +3,9 @@ using FluentAssertions;
 using Melior.InterviewQuestion.Data;
 using Melior.InterviewQuestion.Services;
 using Melior.InterviewQuestion.Types;
+using Melior.InterviewQuestion.Validators;
 using NSubstitute;
+using System;
 using Xunit;
 
 namespace Melior.InterviewQuestion.UnitTests
@@ -16,7 +18,7 @@ namespace Melior.InterviewQuestion.UnitTests
 
         public PaymentServiceTests()
         {
-            _paymentServiceTest = new PaymentService(_accountDataStore);
+            _paymentServiceTest = new PaymentService(_accountDataStore, new PaymentValidator());
         }
 
         [Theory]
@@ -24,6 +26,7 @@ namespace Melior.InterviewQuestion.UnitTests
         public void MakePayment_ShouldNotMakePayment_WhenBacsIsNotValid(
             string debtorAccountNumber, PaymentScheme paymentScheme, AllowedPaymentSchemes allowedPaymentSchemes)
         {
+            // Arrange
             MakePaymentRequest makePaymentRequest = _fixture.Build<MakePaymentRequest>()
                 .With(a => a.DebtorAccountNumber, debtorAccountNumber)
                 .With(a => a.PaymentScheme, paymentScheme)
@@ -49,6 +52,7 @@ namespace Melior.InterviewQuestion.UnitTests
         public void MakePayment_ShouldNotMakePayment_WhenFasterPaymentsIsNotValid(
             string debtorAccountNumber, decimal amount, PaymentScheme paymentScheme, AllowedPaymentSchemes allowedPaymentSchemes, decimal balance)
         {
+            // Arrange
             MakePaymentRequest makePaymentRequest = _fixture.Build<MakePaymentRequest>()
                 .With(a => a.DebtorAccountNumber, debtorAccountNumber)
                 .With(a => a.Amount, amount)
@@ -76,6 +80,7 @@ namespace Melior.InterviewQuestion.UnitTests
         public void MakePayment_ShouldNotMakePayment_WhenChapsIsNotValid(
            string debtorAccountNumber, PaymentScheme paymentScheme, AllowedPaymentSchemes allowedPaymentSchemes, AccountStatus accountStatus)
         {
+            // Arrange
             MakePaymentRequest makePaymentRequest = _fixture.Build<MakePaymentRequest>()
                 .With(a => a.DebtorAccountNumber, debtorAccountNumber)
                 .With(a => a.PaymentScheme, paymentScheme)
@@ -95,6 +100,27 @@ namespace Melior.InterviewQuestion.UnitTests
             // Assert
             result.Success.Should().Be(false);
             _accountDataStore.Received(0).UpdateAccount(Arg.Any<Account>());
+        }
+
+        [Fact]
+        public void MakePayment_ShouldThrowNullReferenceException_WhenPaymentRequestIsNull()
+        {
+            // Arrange
+            string debtorAccountNumber = "1";
+            AllowedPaymentSchemes allowedPaymentSchemes = AllowedPaymentSchemes.Bacs;
+
+            MakePaymentRequest? makePaymentRequest = null;
+
+            Account account = _fixture.Build<Account>()
+                .With(a => a.AccountNumber, debtorAccountNumber)
+                .With(a => a.AllowedPaymentSchemes, allowedPaymentSchemes)
+                .Create();
+
+            // Act
+            Action action = () => _paymentServiceTest.MakePayment(makePaymentRequest);
+
+            // Assert
+            action.Should().Throw<NullReferenceException>();
         }
     }
 }

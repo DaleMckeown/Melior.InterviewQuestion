@@ -8,4 +8,3 @@
         public AllowedPaymentSchemes AllowedPaymentSchemes { get; set; }
     }
 }
-
